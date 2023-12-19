@@ -1,0 +1,15 @@
+media/
+venv/
+.vscode/
+.env
+__pycache__/
+/__pycache__
+auto_chatgpt/migrations/
+auto_chatgpt/__pycache__/
+account/migrations/
+account/__pycache__/
+application/migrations/
+application/__pycache__/
+db.sqlite3
+*.sqlite3
+*.pyc

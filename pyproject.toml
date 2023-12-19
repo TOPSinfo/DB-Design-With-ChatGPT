@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "DB-Design-With-ChatGPT"
+version = "1.0.0"
+description = "This project is developed to design database design with the help of LLM (ChatGPT)"
+authors = ["Your Name <developer@topsinfosolutions.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+django = "^4.1.7"
+django-environ = "^0.9.0"
+colorlog = "^6.7.0"
+pytz = "^2023.3"
+gunicorn = "^20.1.0"
+django-annoying = "^0.10.6"
+django-ninja = "^0.21.0"
+orjson = "^3.8.12"
+django-cors-headers = "^4.2.0"
+django-extensions = "^3.2.3"
+pyjwt = "^2.8.0"
+python-dotenv = "^1.0.0"
+asgiref = "^3.7.2"
+django-crispy-forms = "^1.13.0"
+sqlparse = "^0.4.4"
+typing_extensions = "^4.6.3"
+requests = "^2.31.0"
+mysqlclient = "^2.1.1"
+django-mysql = "^4.9.0"
+openpyxl = "^3.1.2"
+openai = "^0.27.8"
+openai-dbd = "^0.0.30"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
