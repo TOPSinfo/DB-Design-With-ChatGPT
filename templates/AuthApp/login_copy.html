@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+{% block title %}
+Sign In
+{% endblock title %}
+
+{% block css %}
+<style>
+    .bd-placeholder-img {
+        font-size: 1.125rem;
+        text-anchor: middle;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+
+    @media (min-width: 768px) {
+        .bd-placeholder-img-lg {
+            font-size: 3.5rem;
+        }
+    }
+</style>
+{% endblock css %}
+
+{% block content %}
+<div class="container">
+    <div class="mt-3">
+        <div class="row">
+            <div class="col-lg-12 col-md-12 col-sm-6 col-xs-6">
+                {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    <strong>{{ message }}</strong>
+                </div>
+                {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <form class="form-signin" method="post" action="{% url 'login' %}">
+        {% csrf_token %}
+        <div class="text-center">
+            <img class="mb-4" src="{% static 'assets/brand/bootstrap-solid.svg' %}" alt="" width="72" height="72">
+            <h1 class="h3 mb-3 font-weight-normal">Please sign in</h1>
+        </div>
+
+        <div class="form-group col-12">
+            <label for="username">User Name</label>
+            <input type="text" name="username" id="username" placeholder="Enter User Name" class="form-control">
+        </div>
+        <div class="form-group col-12">
+            <label for="Password">Password</label>
+            <input type="password" name="password" id="password" placeholder="Enter Password" class="form-control">
+        </div>
+        <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+        <div class="mt-3">
+            <div class="row">
+                <div class="col-md-6">
+                    <a href="#">Forget Password</a>
+                </div>
+                <div class="col-md-6 float-right">
+                    <a href="{% url 'register' %}">Sign-Up</a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock content %}

@@ -1,0 +1,228 @@
+{% extends "index.html" %} {% load static %} {% load crispy_forms_tags %}
+{%block title %} Home {% endblock title %} 
+{% block css %}
+<style>
+  .h1-text {
+    font-size: 26px;
+    font-family: "Inter";
+  }
+
+  .panel-heading {
+    cursor: pointer;
+  }
+
+  .panel-title {
+    font-weight: bold;
+  }
+
+  .editable-title {
+    display: inline-block;
+    cursor: pointer;
+  }
+
+  .editable-title input {
+    border: none;
+    background: transparent;
+    font-weight: bold;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  th,
+  td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+  }
+
+  td input[type="text"] {
+    border: none;
+    width: 100%;
+    background-color: transparent;
+  }
+
+  .scrollable {
+    overflow-y: scroll;
+    height: 330px;
+  }
+</style>
+{% endblock css %} 
+{% block content %}
+<div class="loading" id="my-loader" style="display: none;">Loading&#8230;</div>
+<div class="px-5">
+  <div class="row mt-3">
+    <div class="col-9"></div>
+    <div class="col-lg-3 col-md-3 col-sm-6">
+      <a href="{% url 'application:home' %}" role="button" class="btn btn-sm btn-dark float-right mb-3">
+        <i class="fa fa-arrow-left" aria-hidden="true"></i>&nbsp;&nbsp;Back
+      </a>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-lg-4 col-md-4 c4-sm-4">
+      <div class="card mb-3">
+        <div class="card-body p-2">
+          <form class="form-signin" method="post">
+            <div class="row d-flex justify-content-center align-items-center overflow-hidden">
+              <div class="form-group m-0 col-12 mb-2">
+                <label for="feature_change">Select Sql File</label>
+                <input type="file" name="  sql_file" id="sql_file" placeholder="Select File" class="form-control"/>
+                <span id="sql_file" class="my-2 text-danger"></span>
+              </div>
+              <div class="form-group m-0 col-12 mb-2">
+                <label for="feature_change">Feature</label>
+                <textarea class="form-control" placeholder="Describe Changes" name="feature_change" id="feature_change" cols="30" rows="11"></textarea>
+                <span id="feature_change" class="my-2 text-danger"></span>
+              </div>
+              <div class="form-group m-0 col-12 d-flex">
+                <button id="correct-sql" class="w-100 btn btn-md btn-primary mr-2 align-items-center" type="button">
+                  Generate
+                </button>
+                <button id="btn-reset" class="w-100 btn btn-md btn-danger align-items-center" type="reset">
+                  Reset
+                </button>
+                <div id="loader" style="display: none;">
+                  <img src="{% static 'assets/images/30.gif' %}" width="150px" height="30px" alt="loader"/>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-8 col-md-8 col-sm-8">
+      <div class="card">
+        <div class="card-header bg-secondary text-white">
+          <div class="w-100 d-flex justify-content-between align-items-center">
+            <h5 class="m-0">SQL Editor</h5>
+            <button id="download-sql" class="btn btn-sm btn-primary pull-right" title="Download File" style="display: none;">
+              Download SQL
+            </button>
+          </div>
+        </div>
+        <div class="card-body" style="padding: 0.7em;">
+          <div class="form-group mb-1">
+            <textarea name="sqlEditor" id="sqlEditor" cols="30" spellcheck="false" rows="15" class="form-control"></textarea>
+            <span id="projectFeatureError" class="my-2 text-danger"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %} 
+{% block cjs %}
+
+<script>
+  let finalResponse;
+  var myData = [];
+  let project_id = 0;
+
+  $(document).ready(function () {
+    $("#loader").hide();
+    $("#download-sql").hide();
+
+    //generate response
+    $("#correct-sql").on("click", function () {
+      $("#my-loader").show()
+      var fileInput = document.getElementById("sql_file");
+      var file = fileInput.files[0];
+      
+      if(file){
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+          const fileData = e.target.result;
+          if (fileData) {
+            $.ajax({
+              url: "{% url 'application:correctDB_view' %}",
+              method: "POST",
+              data: JSON.stringify({
+                sql_file: fileData,
+                feature_change: $('#feature_change').val().trim()
+              }),
+              processData: false,
+              ontentType: false,
+              beforeSend: function (xhr, settings) {
+                $("#loader").show();
+                $("#download-sql").hide();
+                $("#btn-submit").hide();
+                $("#btn-reset").hide();
+                $("#correct-sql").hide();
+                $("#sqlEditor").val("");
+                function getCookie(name) {
+                  var cookieValue = null;
+                  if (document.cookie && document.cookie != "") {
+                    var cookies = document.cookie.split(";");
+                    for (var i = 0; i < cookies.length; i++) {
+                      var cookie = jQuery.trim(cookies[i]);
+                      // Does this cookie string begin with the name we want?
+                      if (cookie.substring(0, name.length + 1) == name + "=") {
+                        cookieValue = decodeURIComponent(
+                          cookie.substring(name.length + 1)
+                        );
+                        break;
+                      }
+                    }
+                  }
+                  return cookieValue;
+                }
+                if (
+                  !(
+                    /^http:.*/.test(settings.url) ||
+                    /^https:.*/.test(settings.url)
+                  )
+                ) {
+                  // Only send the token to relative URLs i.e. locally.
+                  xhr.setRequestHeader("X-CSRFToken", getCookie("csrftoken"));
+                }
+              },
+              success: function (response) {
+                $("#loader").hide();
+                $("#download-sql").show();
+                $("#btn-submit").show();
+                $("#btn-reset").show();
+                $("#correct-sql").show();
+
+                try {
+                  const resp = JSON.parse(response)
+                  alert(resp.message)
+                } catch (error) {
+                  response = response?.split(":")[1] ? response?.split(":")[1] : response?.replace(":", "")
+                  $("#sqlEditor").val(sqlFormatter.format(response));
+                }
+                $('#my-loader').hide()
+              },
+            });
+          }
+        };
+        reader.readAsText(file);
+      }else{
+        Swal.fire('Select SQL File first.!', '', 'error')
+      }
+    });
+
+    function downloadFile(filename, content) {
+      const element = document.createElement('a');
+      const blob = new Blob([content], { type: 'plain/text' });
+      const fileUrl = URL.createObjectURL(blob);
+      
+      element.setAttribute('href', fileUrl);
+      element.setAttribute('download', filename);
+      element.style.display = 'none';
+      
+      document.body.appendChild(element);
+      element.click();
+      
+      document.body.removeChild(element);
+    };
+
+    $("#download-sql").click(() => {
+      downloadFile("converted.sql", $("#sqlEditor").val())
+    });
+  });
+</script>
+{% endblock cjs %}
