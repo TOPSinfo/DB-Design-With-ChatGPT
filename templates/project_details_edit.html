@@ -1,0 +1,707 @@
+{% extends "index.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+{% block title %}
+Edit Project Details
+{% endblock title %}
+
+{% block css %}
+<style>
+    .h1-text {
+        font-size: 26px;
+        font-family: 'Inter';
+    }
+
+    .panel-heading {
+    cursor: pointer;
+    }
+
+    .panel-title {
+    font-weight: bold;
+    }
+
+    .editable-title {
+    display: inline-block;
+    cursor: pointer;
+    }
+
+    .editable-title input {
+    border: none;
+    background: transparent;
+    font-weight: bold;
+    }
+
+    table {
+    border-collapse: collapse;
+    width: 100%;
+    }
+
+    th,
+    td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+    }
+
+    td input[type="text"] {
+    border: none;
+    width: 100%;
+    background-color: transparent;
+    }
+
+    th {
+    background-color: #6c757d54;
+    }
+
+    .scrollable {
+    overflow-y: scroll;
+    height: 330px;
+    }
+</style>
+{% endblock css %}
+
+{% block content %}
+<div class="loading" id="my-loader" style="display: none;">Loading&#8230;</div>
+<div class="px-5">
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <h5 class="h1-text m-0">Edit Project Details</h5>
+        <a href="{% url 'application:home' %}" role="button" class="btn btn-sm btn-dark float-right">
+            <i class="fa fa-arrow-left" aria-hidden="true"></i>&nbsp;&nbsp;Back
+        </a>
+    </div>
+    <div class="row mt-4">
+        <div class="col-lg-4 col-md-4 col-sm-6">
+            <div class="card">
+                <div class="card-body">
+                    <form class="form-signin" method="post">
+                        {% csrf_token %}
+                        <div class="form-group col-12">
+                            <label for="project_title">Project Title</label>
+                            <input type="text" name="project_title" id="project_title" placeholder="Project Title"
+                                class="form-control" value="{{project.project_title}}">
+                        </div>
+                        <div class="form-group col-12">
+                            <label for="project_feature">Project Features</label>
+                            <textarea name="project_feature" id="project_feature" cols="30" rows="10"
+                                class="form-control"
+                                placeholder="Enter Project features with coma saperated value...">{{project.project_feature}}</textarea>
+                        </div>
+                        <input type="hidden" name="data-res" id="data-res" value="{{project.response}}">
+                        <input type="hidden" name="project_id" id="project_id" value="{{project.id}}">
+                        <div class="form-group col-12">
+                            <button id="btnSubmit" data-url="{% url 'application:edit_view' project.id %}" class="btn btn-md btn-primary" name="btndownload" type="button">Regenerate</button>
+                            <div id="loader" style="display: none;">
+                                <h6 class="text-info fw-bold">
+                                  Please Wait while Processing ...
+                                </h6>
+                                <img src="{% static 'assets/images/30.gif' %}" width="150px" height="30px" alt="loader"/>
+                              </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8 col-md-8">
+            <div class="card mb-3">
+                <div class="card-header bg-dark text-white">
+                    <div class="row">
+                        <div class="col-12">
+                          <h5 class="w-100 m-0 mb-1 p-0 align-middle">Your Tables - Export / Download</h5>
+                        </div>
+                        <div class="col-12" id="actions">
+                          <button id="downloadExcel" class="btn btn-sm btn-primary mr-2" title="Download File">
+                            Excel
+                          </button>
+                          <button id="downloadSql" class="btn btn-sm btn-primary mr-2" title="Download File">
+                            SQL
+                          </button>
+                          <button id="downloadPModels" class="btn btn-sm btn-primary mr-2" title="Download File">
+                            Python Models
+                          </button>
+                          <button id="downloadSModels" class="btn btn-sm btn-primary mr-2" title="Download File">
+                            Sequelize Models
+                          </button>
+                          <button id="btnSave" class="btn btn-sm btn-info mr-2" title="Save Response">
+                            Save Changes
+                          </button>
+                        </div>
+                      </div>
+                </div>
+                <div class="card-body">
+                    <div id="accordion" class="scrollable"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal -->
+<div class="modal fade" id="tbl-name-change" tabindex="-1" role="dialog" aria-labelledby="tbl-name-changeTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exampleModalLongTitle">Change Table Name</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <input type="hidden" id="oldValue">
+            <input type="hidden" id="tblView">
+            <input type="text" id="change-tbl-name" class="form-control">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-sm btn-primary" id="save-tbl-name">Save changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}
+{% block cjs %}
+<script>
+    let finalResponse;
+    var myData = []
+    var project_id;
+
+    $(document).ready(function (){
+        var dataRes = $('#data-res').val();
+        myData = JSON.parse(dataRes);
+        project_id = $('#project_id').val();
+        $("#loader").hide();
+        displayTables(myData);
+
+        function downloadFile(filename, content, type='plain/text') {
+            var blob;
+            if(type === "application/zip"){
+                var binaryData = atob(content);
+                blob = new Blob([binaryData], { type: 'application/zip' });
+            }else{
+                blob = new Blob([content], { type });
+            }
+            const element = document.createElement('a');
+            const fileUrl = URL.createObjectURL(blob);
+            
+            element.setAttribute('href', fileUrl);
+            element.setAttribute('download', filename);
+            element.style.display = 'none';
+            
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        };
+
+        function generateZipFromBase64(fileName, base64Data) {
+            var binaryData = atob(base64Data);
+
+            var buffer = new ArrayBuffer(binaryData.length);
+            var view = new Uint8Array(buffer);
+            for (var i = 0; i < binaryData.length; i++) {
+                view[i] = binaryData.charCodeAt(i);
+            }
+
+            var blob = new Blob([view], { type: 'application/zip' });
+
+            var url = URL.createObjectURL(blob);
+
+            var link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        $(document).on("change", ".edit-me", (e) => {
+            let tableChange = $(e.target).parent().parent().attr("class").trim()
+            
+            const fieldChange = $(e.target).data("col").trim();
+            const fieldChangeIndex = $(e.target).data("index");
+            let selectedObj = {}
+
+            myData.forEach((val, index) => {
+                if(val.table_name == tableChange){
+                    myData[index]['columns'][fieldChangeIndex][`${fieldChange}`] = e.target.value.trim();
+                }
+            })
+        });
+
+        $(document).on("click", "#save-tbl-name", (e) => {
+            const elm = $("#change-tbl-name");
+
+            const tableName = elm?.val().trim().toLowerCase();
+            const oldTblName = $('#oldValue').val().trim();
+            const changeHTML = $("#tblView").val().trim();
+            
+            let selectedObj = {}
+            
+            myData.forEach((val, index) => {
+                if(val.table_name.trim() == oldTblName){
+                myData[index]['table_name'] = tableName;
+                }
+            })
+
+            $(`.${oldTblName}`).attr("class", tableName);
+            $(`#${changeHTML}`).html(tableName)
+            $("#change-tbl-name").val("");
+            $('#tbl-name-change').modal('hide');
+        });
+
+        $(document).on("click", '.editable-title', (e) => {
+            const tblName = $(e.target).parent().attr('data-tbl-name');
+            const targetTbl = $(e.target).parent().data('id');
+            
+            $("#change-tbl-name").val(tblName);
+            $('#oldValue').val(tblName);
+            $("#tblView").val(targetTbl);
+            $('#tbl-name-change').modal('show');
+        });
+
+        $(document).on("click", "#downloadExcel", (e) => {
+            $.ajax({
+                url: "{% url 'application:download_view' %}",
+                method: "POST",
+                data: JSON.stringify({
+                file_type: "json_excel",
+                pure_json: JSON.stringify(myData)
+                }),
+                beforeSend: function (xhr, settings) {
+                    $("#my-loader").show();
+                    function getCookie(name) {
+                    var cookieValue = null;
+                    if (document.cookie && document.cookie != "") {
+                        var cookies = document.cookie.split(";");
+                        for (var i = 0; i < cookies.length; i++) {
+                        var cookie = jQuery.trim(cookies[i]);
+                        if (cookie.substring(0, name.length + 1) == name + "=") {
+                            cookieValue = decodeURIComponent(
+                            cookie.substring(name.length + 1)
+                            );
+                            break;
+                        }
+                        }
+                    }
+                    return cookieValue;
+                    }
+                    if (
+                    !(
+                        /^http:.*/.test(settings.url) ||
+                        /^https:.*/.test(settings.url)
+                    )
+                    ) {
+                    // Only send the token to relative URLs i.e. locally.
+                    xhr.setRequestHeader("X-CSRFToken", getCookie("csrftoken"));
+                    }
+                },
+                success: function (response) {
+                    var base64Data = response;
+                    var fileName = 'example.xlsx';
+
+                    var downloadLink = document.createElement('a');
+                    downloadLink.href = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + base64Data;
+                    downloadLink.download = fileName;
+
+                    document.body.appendChild(downloadLink);
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+                    $("#my-loader").hide();
+                }
+            });
+        });
+
+        $(document).on("click", "#downloadSql", (e) => {
+            $.ajax({
+                url: "{% url 'application:download_view' %}",
+                method: "POST",
+                data: JSON.stringify({
+                file_type: "json_sql",
+                pure_json: JSON.stringify(myData)
+                }),
+                beforeSend: function (xhr, settings) {
+                    $("#my-loader").show();
+                    function getCookie(name) {
+                    var cookieValue = null;
+                    if (document.cookie && document.cookie != "") {
+                        var cookies = document.cookie.split(";");
+                        for (var i = 0; i < cookies.length; i++) {
+                        var cookie = jQuery.trim(cookies[i]);
+                        if (cookie.substring(0, name.length + 1) == name + "=") {
+                            cookieValue = decodeURIComponent(
+                            cookie.substring(name.length + 1)
+                            );
+                            break;
+                        }
+                        }
+                    }
+                    return cookieValue;
+                    }
+                    if (
+                    !(
+                        /^http:.*/.test(settings.url) ||
+                        /^https:.*/.test(settings.url)
+                    )
+                    ) {
+                    // Only send the token to relative URLs i.e. locally.
+                    xhr.setRequestHeader("X-CSRFToken", getCookie("csrftoken"));
+                    }
+                },
+                success: function (response) {
+                    try {
+                        downloadFile("download.sql", sqlFormatter.format(response))
+                    } catch (error) {
+                        downloadFile("download.sql", response)
+                    }
+                    $("#my-loader").hide();
+                }
+            });
+        });
+
+        $(document).on("click", "#downloadPModels", (e) => {
+            $.ajax({
+                url: "{% url 'application:download_view' %}",
+                method: "POST",
+                data: JSON.stringify({
+                file_type: "json_p_models",
+                pure_json: JSON.stringify(myData)
+                }),
+                beforeSend: function (xhr, settings) {
+                    $("#my-loader").show();
+                    function getCookie(name) {
+                    var cookieValue = null;
+                    if (document.cookie && document.cookie != "") {
+                        var cookies = document.cookie.split(";");
+                        for (var i = 0; i < cookies.length; i++) {
+                        var cookie = jQuery.trim(cookies[i]);
+                        if (cookie.substring(0, name.length + 1) == name + "=") {
+                            cookieValue = decodeURIComponent(
+                            cookie.substring(name.length + 1)
+                            );
+                            break;
+                        }
+                        }
+                    }
+                    return cookieValue;
+                    }
+                    if (
+                    !(
+                        /^http:.*/.test(settings.url) ||
+                        /^https:.*/.test(settings.url)
+                    )
+                    ) {
+                    // Only send the token to relative URLs i.e. locally.
+                    xhr.setRequestHeader("X-CSRFToken", getCookie("csrftoken"));
+                    }
+                },
+                success: function (response) {
+                    try {
+                        generateZipFromBase64("download.zip", response)
+                    } catch (error) {}
+                    $("#my-loader").hide();
+                }
+            });
+        });
+
+        $(document).on("click", "#downloadSModels", (e) => {
+            $.ajax({
+                url: "{% url 'application:download_view' %}",
+                method: "POST",
+                data: JSON.stringify({
+                file_type: "json_s_models",
+                pure_json: JSON.stringify(myData)
+                }),
+                beforeSend: function (xhr, settings) {
+                    $("#my-loader").show();
+                    function getCookie(name) {
+                    var cookieValue = null;
+                    if (document.cookie && document.cookie != "") {
+                        var cookies = document.cookie.split(";");
+                        for (var i = 0; i < cookies.length; i++) {
+                        var cookie = jQuery.trim(cookies[i]);
+                        if (cookie.substring(0, name.length + 1) == name + "=") {
+                            cookieValue = decodeURIComponent(
+                            cookie.substring(name.length + 1)
+                            );
+                            break;
+                        }
+                        }
+                    }
+                    return cookieValue;
+                    }
+                    if (
+                    !(
+                        /^http:.*/.test(settings.url) ||
+                        /^https:.*/.test(settings.url)
+                    )
+                    ) {
+                    // Only send the token to relative URLs i.e. locally.
+                    xhr.setRequestHeader("X-CSRFToken", getCookie("csrftoken"));
+                    }
+                },
+                success: function (response) {
+                    try {
+                        generateZipFromBase64("download.zip", response)
+                    } catch (error) {}
+                    $("#my-loader").hide();
+                }
+            });
+        });
+
+        $("#btnSave").on("click", function () {
+            $.ajax({
+                url: "{% url 'application:save_response' %}",
+                method: "POST",
+                traditional: true,
+                data: JSON.stringify({
+                content: myData,
+                project_id: project_id,
+                }),
+                beforeSend: function (xhr, settings) {
+                    $("#my-loader").show();
+                    function getCookie(name) {
+                        var cookieValue = null;
+                        if (document.cookie && document.cookie != "") {
+                        var cookies = document.cookie.split(";");
+                        for (var i = 0; i < cookies.length; i++) {
+                            var cookie = jQuery.trim(cookies[i]);
+                            // Does this cookie string begin with the name we want?
+                            if (cookie.substring(0, name.length + 1) == name + "=") {
+                            cookieValue = decodeURIComponent(
+                                cookie.substring(name.length + 1)
+                            );
+                            break;
+                            }
+                        }
+                        }
+                        return cookieValue;
+                    }
+                    if (
+                        !(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))
+                    ) {
+                        // Only send the token to relative URLs i.e. locally.
+                        xhr.setRequestHeader("X-CSRFToken", getCookie("csrftoken"));
+                    }
+                },
+                success: function (response) {
+                if (response.success) {
+                    Swal.fire("Saved", response.message, "success");
+                } else {
+                    Swal.fire("Error", response.message, "error");
+                }
+                $("#my-loader").hide();
+                },
+            });
+        });
+
+        $("#btnSubmit").on("click", function () {
+            const url = $(this).attr('data-url');
+            var project_title = $("#project_title").val();
+            var project_feature = $("#project_feature").val();
+
+            $.ajax({
+                url: url,
+                method: "POST",
+                data: {
+                    project_title: project_title,
+                    project_feature: project_feature,
+                },
+                beforeSend: function (xhr, settings) {
+                    $("#my-loader").show();
+                    $("#loader").show();
+                    $("#btnSubmit").hide();
+                    function getCookie(name) {
+                    var cookieValue = null;
+                    if (document.cookie && document.cookie != "") {
+                        var cookies = document.cookie.split(";");
+                        for (var i = 0; i < cookies.length; i++) {
+                        var cookie = jQuery.trim(cookies[i]);
+                        if (cookie.substring(0, name.length + 1) == name + "=") {
+                            cookieValue = decodeURIComponent(
+                            cookie.substring(name.length + 1)
+                            );
+                            break;
+                        }
+                        }
+                    }
+                    return cookieValue;
+                    }
+                    if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
+                    xhr.setRequestHeader("X-CSRFToken", getCookie("csrftoken"));
+                    }
+                },
+                success: function (response) {
+                    $("#loader").hide();
+                    $("#btnSubmit").show();
+
+                    finalResponse = response.data;
+                    // project_id = response.project_id;
+
+                    if (response.status) {
+                        Swal.fire("Congratulation", response.message, "success");
+                        displayTables(response.data);
+                        myData = response.data;
+                    } else {
+                        Swal.fire("Error", response.message, "error");
+                    }
+                    $("#my-loader").hide();
+                },
+            });
+        });
+
+        $("#btnDownload").on("click", function () {
+            var fType = $("#file_type").val();
+            
+            if(myData && myData.length > 0){
+                $.ajax({
+                url: "{% url 'application:download_view' %}",
+                method: "POST",
+                traditional: true,
+                // xhrFields: {
+                //   responseType: 'blob' // to avoid binary data being mangled on charset conversion
+                // },
+                data: {
+                    title: $("#project_title").val().trim(),
+                    file_type: fType.trim(),
+                    data: JSON.stringify(myData)
+                },
+                beforeSend: function (xhr, settings) {
+                    function getCookie(name) {
+                    var cookieValue = null;
+                    if (document.cookie && document.cookie != "") {
+                        var cookies = document.cookie.split(";");
+                        for (var i = 0; i < cookies.length; i++) {
+                        var cookie = jQuery.trim(cookies[i]);
+                        // Does this cookie string begin with the name we want?
+                        if (cookie.substring(0, name.length + 1) == name + "=") {
+                            cookieValue = decodeURIComponent(
+                            cookie.substring(name.length + 1)
+                            );
+                            break;
+                        }
+                        }
+                    }
+                    return cookieValue;
+                    }
+                    if (
+                    !(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))
+                    ) {
+                    // Only send the token to relative URLs i.e. locally.
+                    xhr.setRequestHeader("X-CSRFToken", getCookie("csrftoken"));
+                    }
+                },
+                success: function (response) {
+                    if(fType == "excel"){
+                    var downloadLink = document.createElement('a');
+                    downloadLink.href = window.URL.createObjectURL(response);
+                    downloadLink.setAttribute('download', `${$("#project_title").val().trim().replace(" ", '_')}.excel`);
+                    
+                    document.body.appendChild(downloadLink);
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+                    
+                    window.URL.revokeObjectURL(downloadLink.href);
+                    }
+                    // if (response.status) {
+                    //     sweetAlert("Saved", "file downloaded", "success");
+                    // } else {
+                    //     sweetAlert("Error", response.message, "error");
+                    // }
+                },
+                });
+            }
+        });
+    });
+
+    function validateInputs(project_title, project_feature) {
+        if (project_title === "") {
+        $("#projectTitleError").html(
+            "<strong>Error:&nbsp;&nbsp;</strong>Please enter Project Title!"
+        );
+        $("#projectFeatureError").html("");
+        $("#project_title").focus();
+        return false;
+        }
+
+        if (project_feature === "") {
+        $("#projectFeatureError").html(
+            "<strong>Error:&nbsp;&nbsp;</strong>Please enter Project Feature!"
+        );
+        $("#projectTitleError").html("");
+        $("#project_feature").focus();
+        return false;
+        }
+
+        return true;
+    }
+
+    function displayTables(response) {
+        $("#accordion").html("")
+        response.forEach((table, index) => {
+        var card = $("<div class='card mb-1'></div>");
+        var cardHeader = $(`
+            <div class='w-100 card-header bg-secondary text-white d-flex justify-content-between'>
+            <h5 class='mb-0 w-100' id='table_${index}' data-toggle='collapse' data-target='#collapse${index}'>${table.table_name.trim()}</h5>  
+            <span class='editable-title mx-2' data-id='table_${index}' data-tbl-name='${table.table_name.trim()}' title='Change Table Name'>
+                <i class='fa fa-pencil fa-1x'></i>
+            </span>
+            </div>
+        `);
+        card.append(cardHeader);
+        
+        var collapseContent = $(
+            `<div id='collapse${index}' class='collapse'></div>`
+        );
+        var cardBody = $("<div class='card-body'></div>");
+        collapseContent.append(cardBody);
+        
+        var tableElement = $(`
+            <table class='table table-bordered mb-0'>
+            <tr>
+                <th style="width:20%">Column Name</th>
+                <th style="width:17%">Data Type</th>
+                <th style="width:13%">Size</th>
+                <th style="width:50%">Constraint</th>
+            </tr>
+            </table>
+        `);
+        
+        table.columns.forEach(function (column, ii) {
+            var columnRow = $(`<tr class='${table.table_name.trim()}'></tr>`);
+            columnRow.append(`
+            <td><input type="text" class="edit-me" data-index="${ii}" data-col="column_name" id="column_name_${ii}" value="${column.column_name?.trim()}" /> </td>
+            <td><input type="text" class="edit-me" data-index="${ii}" data-col="data_type" id="data_type_${ii}" value="${column.data_type?.trim().toUpperCase()}" /> </td>
+            <td><input type="text" class="edit-me" data-index="${ii}" data-col="size" id="size_${ii}" value="${column.size?.trim() || ""}" /> </td>
+            <td><input type="text" class="edit-me" data-index="${ii}" data-col="constraint" id="constraint_${ii}" value="${column.constraint?.trim()}" /> </td>
+            `);
+            tableElement.append(columnRow);
+        });
+        
+        cardBody.append(tableElement);
+        card.append(collapseContent);
+
+        $("#accordion").append(card);
+        });
+    }
+
+    function performEdit(index) {
+        var tableId = "#table_" + index;
+        var tableCtx = $(tableId);
+        var tableName = tableCtx.text();
+        var inputFieldId = `${tableName}${index}`;
+        var inputField = $(
+        `<input type='text' class="tbl-change" data-table="${tableName}" id='${inputFieldId}' value='${tableName}'>`
+        );
+        tableCtx.empty().append(inputField);
+        inputField.focus();
+        inputField.on("change", function (event) {
+        // if (event.keyCode === 13) {
+            event.preventDefault();
+            var newTitle = inputField.val().trim();
+            tableCtx.text(newTitle);
+            tableCtx.append(`
+            <span class='editable-title mx-2' title='Change Table Name' onclick='performEdit(${index})'><i class='fa fa-pencil fa-1x'></i></span>
+            `);
+        // }
+        });
+    }
+</script>
+{% endblock cjs %}

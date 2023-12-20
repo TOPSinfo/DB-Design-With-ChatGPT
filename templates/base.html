@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    {% load static %}
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="icon" type="image/x-icon" href="../static/assets/images/favicon.ico">
+    <title>Auth System - {% block title %}{% endblock title %}</title>
+
+    <link rel="canonical" href="https://getbootstrap.com/docs/4.6/examples/sign-in/">
+    <link href="{% static 'assets/dist/css/bootstrap.min.css' %}" rel="stylesheet" type="text/css">
+    <link href=" {% static 'assets/dist/css/signin.css' %}" rel="stylesheet">
+    <link href=" {% static 'assets/dist/css/auth.css' %}" rel="stylesheet">
+    <link href=" {% static 'assets/dist/css/loading.css' %}" rel="stylesheet">
+
+    {% block css %}
+    {% endblock css %}
+</head>
+
+<body>
+    <div class="loading" id="my-loader" style="display: none;">Loading&#8230;</div>
+    {% block content %}
+    {% endblock content %}
+</body>
+
+</html>
