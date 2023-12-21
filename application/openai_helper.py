@@ -36,7 +36,6 @@ def myExcl(data, sql=None):
 
             return generate_excel(projectCategory, json_data)
     except Exception as ex:
-        print(ex)
         return None
 
 def myJson(data):
@@ -48,14 +47,12 @@ def myJson(data):
         
         return json.loads(AIdata['choices'][0]['message']['content'].replace("\n", "").replace("\\", ""))
     except Exception as ex:
-        print(ex)
         return None
     
 def jsonToExcel(data):
     try:
-        return generate_excel(data['title'], data['json_obj'])
+        return generate_excel(data['title'], json.loads(data['json_obj']))
     except Exception as ex:
-        print(ex)
         return None
     
 def jsonToSql(data):
@@ -63,32 +60,29 @@ def jsonToSql(data):
         data = convert_json_to_sql(json.dumps(data['json_obj']), {"url": URL, "headers": HEADERS})
         return sqlparse.parse(data['choices'][0]['message']['content'].replace("\n", "").replace("\\", ""))
     except Exception as ex:
-        print(ex)
         return None
     
 def jsonToPythonModels(data):
     try:
-        return json_to_python_models(data['json_obj'])
+        return json_to_python_models(json.loads(data['json_obj']))
     except Exception as ex:
-        print(ex)
         return None
 
 def jsonToSequelizeModels(data):
     try:
-        return json_to_sequelize_models(data['json_obj'])
+        return json_to_sequelize_models(json.loads(data['json_obj']))
     except Exception as ex:
-        print(ex)
         return None
     
 def correctExistingDB(data):
     try:
         if data['sql_file']:
             AIdata = correct_schema(data['feature_change'], data['sql_file'], {"url": URL, "headers": HEADERS})
+            
             if('error' in AIdata.keys()):
                 return None
         
             return sqlparse.format(AIdata['choices'][0]['message']['content'].replace("\n", "").replace("\\", ""), reindent=True, keyword_case='upper')
 
     except Exception as ex:
-        print(ex)
         return None

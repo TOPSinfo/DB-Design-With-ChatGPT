@@ -227,8 +227,8 @@ def download_view(request):
             "json_obj": myProject.response
         })
         
-    if(res.status_code == 200 or res.status_code == '200'):
-        return HttpResponse(res.text)
+    if(res):
+        return HttpResponse(res)
     else:
         return JsonResponse({"success": False, "message": "Something went wrong.!"})
   
@@ -249,7 +249,7 @@ def correctDB_view(request):
             "feature_change": Feature_Changes
         })
         
-        return HttpResponse(AIData.content)
+        return HttpResponse(AIData)
     else:
         return render(request, 'correct_db.html')
 
