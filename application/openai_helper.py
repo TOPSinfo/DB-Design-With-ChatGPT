@@ -1,5 +1,6 @@
 import os, json, sqlparse
-from openai_dbd import (
+from .ai import (
+# from openai_dbd import (
     generate_sql, 
     sql_prompt, 
     correct_schema,
